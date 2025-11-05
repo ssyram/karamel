@@ -1094,7 +1094,7 @@ and subtype env t1 t2 =
   let essentially_slice lid =
     [
       [ "std"; "path" ], "Path";
-      [ "std"; "ffi"; "os"; "str" ], "OsStr";
+      [ "std"; "ffi"; "os_str" ], "OsStr";
     ]
     |> List.mem lid
   in
