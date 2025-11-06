@@ -1099,13 +1099,19 @@ and essentially_slice lid =
   |> List.mem lid
 
 and normalize env t =
-    match MonomorphizationState.resolve_deep (expand_abbrev env t) with
-    | TBuf (TApp ((["Eurydice"], "derefed_slice"), [ t ]), _) ->
-        normalize env (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
-    | TBuf (TQualified lid, _) when essentially_slice lid ->
-        normalize env (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
-    | t ->
-        t
+  let obj = object
+    inherit [_] map as super
+
+    method! visit_typ () t =
+      match MonomorphizationState.resolve_deep (expand_abbrev env t) with
+      | TBuf (TApp ((["Eurydice"], "derefed_slice"), [ t ]), _) ->
+          super#visit_typ () (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
+      | TBuf (TQualified lid, _) when essentially_slice lid ->
+          super#visit_typ () (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
+      | t ->
+          super#visit_typ () t
+  end in
+  obj#visit_typ () t
 
 and subtype env t1 t2 =
   let t1 = normalize env t1 in
