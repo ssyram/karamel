@@ -273,6 +273,7 @@ and check_union env fieldexprs fieldtyps =
 
 
 and check env t e =
+  let t = normalize env t in
   if Options.debug "checker" then KPrint.bprintf "[check] t=%a for e=%a\n" ptyp t pexpr e;
   if Options.debug "checker" then KPrint.bprintf "[check] annot=%a for e=%a\n" ptyp e.typ pexpr e;
   check' env t e;
@@ -1097,18 +1098,18 @@ and essentially_slice lid =
   ]
   |> List.mem lid
 
-and subtype env t1 t2 =
-  let rec normalize t =
+and normalize env t =
     match MonomorphizationState.resolve_deep (expand_abbrev env t) with
     | TBuf (TApp ((["Eurydice"], "derefed_slice"), [ t ]), _) ->
-        normalize (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
+        normalize env (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
     | TBuf (TQualified lid, _) when essentially_slice lid ->
-        normalize (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
+        normalize env (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
     | t ->
         t
-  in
-  let t1 = normalize t1 in
-  let t2 = normalize t2 in
+
+and subtype env t1 t2 =
+  let t1 = normalize env t1 in
+  let t2 = normalize env t2 in
   if Options.debug "checker" then
     KPrint.bprintf "%a <=? %a\n" ptyp t1 ptyp t2;
   match t1, t2 with
