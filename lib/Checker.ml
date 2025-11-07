@@ -1090,28 +1090,7 @@ and assert_cons_of env t id: fields_t =
   | _ ->
       checker_error env "the annotated type %a is not a variant type" ptyp (TAnonymous t)
 
-and essentially_slice lid =
-  let (|>) x f = f x in
-  [
-    [ "std"; "path" ], "Path";
-    [ "std"; "ffi"; "os_str" ], "OsStr";
-  ]
-  |> List.mem lid
-
-and normalize env t =
-  let obj = object
-    inherit [_] map as super
-
-    method! visit_typ () t =
-      match MonomorphizationState.resolve_deep (expand_abbrev env t) with
-      | TBuf (TApp ((["Eurydice"], "derefed_slice"), [ t ]), _) ->
-          super#visit_typ () (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
-      | TBuf (TQualified lid, _) when essentially_slice lid ->
-          super#visit_typ () (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
-      | t ->
-          super#visit_typ () t
-  end in
-  obj#visit_typ () t
+and normalize env t = MonomorphizationState.resolve_deep (expand_abbrev env t)
 
 and subtype env t1 t2 =
   let t1 = normalize env t1 in
@@ -1223,22 +1202,25 @@ and check_subtype env t1 t2 =
     checker_error env "subtype mismatch:\n  %a (a.k.a. %a) vs:\n  %a (a.k.a. %a)"
       ptyp t1 ptyp (expand_abbrev env t1) ptyp t2 ptyp (expand_abbrev env t2)
 
-and expand_abbrev env t =
-  match t with
-  | TQualified lid ->
-      begin match M.find lid env.types with
-      | exception Not_found -> t
-      | Abbrev t -> expand_abbrev env t
-      | _ -> t
-      end
-  | TApp (lid, args) ->
-      begin match M.find lid env.types with
-      | exception Not_found -> TApp (lid, List.map (expand_abbrev env) args)
-      | Abbrev t -> expand_abbrev env (DeBruijn.subst_tn args t)
-      | _ -> TApp (lid, List.map (expand_abbrev env) args)
-      end
-  | _ ->
-      t
+and expand_abbrev env t = object
+  inherit [_] map as super
+
+  method! visit_typ () t =
+    match t with
+    | TQualified lid ->
+        begin match M.find lid env.types with
+        | exception Not_found -> t
+        | Abbrev t -> super#visit_typ () t
+        | _ -> super#visit_typ () t
+        end
+    | TApp (lid, args) ->
+        begin match M.find lid env.types with
+        | exception Not_found -> TApp (lid, List.map (expand_abbrev env) args)
+        | Abbrev t -> expand_abbrev env (DeBruijn.subst_tn args t)
+        | _ -> TApp (lid, List.map (expand_abbrev env) args)
+        end
+    | _ -> super#visit_typ () t
+  end#visit_typ () t
 
 and check_array_index env e =
     match check env uint32 e with

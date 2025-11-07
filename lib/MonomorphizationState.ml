@@ -30,12 +30,31 @@ let resolve t: typ =
   | _ ->
       t
 
+(** Ugly trick to handle some of the Rust std types *)
+let essentially_slice lid =
+  let (|>) x f = f x in
+  [
+    [ "std"; "path" ], "Path";
+    [ "std"; "ffi"; "os_str" ], "OsStr";
+  ]
+  |> List.mem lid
+
 let resolve_deep = (object(self)
   inherit [_] map
 
   method! visit_TApp () t ts =
     let ts = List.map (self#visit_typ ()) ts in
     resolve (TApp (t, ts))
+
+  method! visit_TBuf () t c =
+    match t with
+    | TApp ((["Eurydice"], "derefed_slice"), [ t ]) ->
+      let t = self#visit_typ () t in
+      resolve (TApp ((["Eurydice"], "dst_ref"), [t; Helpers.usize]))
+    | TQualified lid when essentially_slice lid ->
+      resolve (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
+    | _ ->
+      TBuf (self#visit_typ () t, c)
 
   method! visit_TCgApp () t ts =
     resolve (TCgApp (t, ts))
