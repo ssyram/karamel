@@ -217,14 +217,16 @@ let build_scheme_map files =
             (* An array wrapped in a struct is passed by copy. An array NOT
                wrapped in a struct decays to a pointer and is passed by
                reference. This phase is only correct if t is not an array. *)
-            Hashtbl.add map lid (Eliminate t)
+            (* Hashtbl.add map lid (Eliminate t) *)
+            ()
         | _ ->
             ()
         end
     | DType (lid, _, _, 0, Enum _) ->
         Hashtbl.add map lid ToEnum
     | DType (lid, _, _, 0, Flat [ _, (t, _) ]) when not (Helpers.is_array t) ->
-        Hashtbl.add map lid (Eliminate t)
+        (* Hashtbl.add map lid (Eliminate t) *)
+        ()
     | _ ->
         ()
   ) in
