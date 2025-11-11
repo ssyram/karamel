@@ -224,7 +224,7 @@ let build_scheme_map files =
         end
     | DType (lid, _, _, 0, Enum _) ->
         Hashtbl.add map lid ToEnum
-    | DType (lid, _, _, 0, Flat [ _, (t, _) ]) when not (Helpers.is_array t) ->
+    | DType (_, _, _, 0, Flat [ _, (t, _) ]) when not (Helpers.is_array t) ->
         (* Hashtbl.add map lid (Eliminate t) *)
         ()
     | _ ->
