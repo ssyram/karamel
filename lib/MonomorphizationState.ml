@@ -42,11 +42,23 @@ let essentially_slice lid =
 let resolve_deep = (object(self)
   inherit [_] map
 
+  method! visit_TBuf () t c =
+    let ref_lid = ["Eurydice"], if c then "dst_ref_shared" else "dst_ref_mut" in
+    match t with
+    | TApp ((["Eurydice"], "derefed_slice"), [ t ]) ->
+        (* TBuf (TApp ...) ~~> TApp *)
+        let t = self#visit_typ () t in
+        resolve (TApp (ref_lid, [t; Helpers.usize]))
+    | TQualified lid when essentially_slice lid ->
+      resolve (TApp (ref_lid, [ TQualified lid; Helpers.usize]))
+    | _ ->
+        TBuf (self#visit_typ () t, c)
+
   method! visit_TApp () t ts =
     let ts = List.map (self#visit_typ ()) ts in
     resolve (TApp (t, ts))
 
-  method! visit_TBuf () t c =
+  (* method! visit_TBuf () t c =
     match t with
     | TApp ((["Eurydice"], "derefed_slice"), [ t ]) ->
       let t = self#visit_typ () t in
@@ -54,7 +66,7 @@ let resolve_deep = (object(self)
     | TQualified lid when essentially_slice lid ->
       resolve (TApp ((["Eurydice"], "dst_ref"), [ TQualified lid; Helpers.usize]))
     | _ ->
-      TBuf (self#visit_typ () t, c)
+      TBuf (self#visit_typ () t, c) *)
 
   method! visit_TCgApp () t ts =
     resolve (TCgApp (t, ts))
