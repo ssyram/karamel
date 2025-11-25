@@ -655,11 +655,13 @@ let functions files =
               let d = DGlobal (flags, name, n, t, self#visit_expr_w 0 body) in
               assert (n = 0);
               Gen.clear () @ [ d ]
-        | DExternal (_, _, _, _, name, _, _) as d ->
+        | DExternal (_, _, n_cgs, n, name, _, _) as d ->
             if Hashtbl.mem map name then
               []
-            else
+            else begin
+              assert (n = 0 && n_cgs = 0);
               Gen.clear () @ [ d ]
+            end
         | d ->
             [ d ]
       ) decls
