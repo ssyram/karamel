@@ -763,9 +763,12 @@ let functions files =
                   KPrint.bprintf "%a is not fully cg-applied!\n" plid lid;
                   ETApp (self#visit_expr env e, cgs, cgs', ts)
                 end else
-                  let name, comment = NameGen.gen_lid name ts (Cg cgs) in
+                  let name, comment = NameGen.gen_lid name ts (Cg []) in
                   let def () =
                     let t = DeBruijn.(subst_ctn diff cgs (subst_tn ts t)) in
+                    let ret, args = flatten_arrow t in
+                    let _, args = KList.split (List.length (cgs @ cgs')) args in
+                    let t = fold_arrow args ret in
                     DExternal (cc, flags @ comment, 0, 0, name, t, pp)
                   in
                   EQualified (Gen.register_def current_file lid (cgs @ cgs') ts name def)
