@@ -623,6 +623,9 @@ let functions files =
     | DGlobal (flags, name, n, t, body) ->
         if n > 0 then
           Hashtbl.add map name (`Global (flags, name, n, t, body))
+    | DExternal (cc, flags, n_cgs, n, name, t, pp) ->
+        if n > 0 || n_cgs > 0 then
+          Hashtbl.add map name (`External (cc, flags, n_cgs, n, name, t, pp))
     | _ ->
         ()
   ) in
@@ -651,6 +654,11 @@ let functions files =
             else
               let d = DGlobal (flags, name, n, t, self#visit_expr_w 0 body) in
               assert (n = 0);
+              Gen.clear () @ [ d ]
+        | DExternal (_, _, _, _, name, _, _) as d ->
+            if Hashtbl.mem map name then
+              []
+            else
               Gen.clear () @ [ d ]
         | d ->
             [ d ]
@@ -744,6 +752,21 @@ let functions files =
                     DGlobal (flags @ comment, name, 0, t, body)
                   in
                   EQualified (Gen.register_def current_file lid [] ts name def)
+
+            | `External (cc, flags, n_cgs, n, name, t, pp) ->
+                if n <> List.length ts then begin
+                  KPrint.bprintf "%a is not fully type-applied!\n" plid lid;
+                  ETApp (self#visit_expr env e, cgs, cgs', ts)
+                end else if n_cgs <> List.length cgs then begin
+                  KPrint.bprintf "%a is not fully cg-applied!\n" plid lid;
+                  ETApp (self#visit_expr env e, cgs, cgs', ts)
+                end else
+                  let name, comment = NameGen.gen_lid name ts (Cg cgs) in
+                  let def () =
+                    let t = DeBruijn.(subst_ctn diff cgs (subst_tn ts t)) in
+                    DExternal (cc, flags @ comment, 0, 0, name, t, pp)
+                  in
+                  EQualified (Gen.register_def current_file lid (cgs @ cgs') ts name def)
 
           end
 
