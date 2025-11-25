@@ -171,6 +171,8 @@ and print_flag = function
       string ("__attribute__((target = "^s^"))")
   | Workspace ->
       string "workspace"
+  | MonoExtFunc ->
+      string "monomorphize_external_function"
 
 and print_binder { typ; node = { name; mut; meta; mark; _ }; meta = node_meta } =
   print_node_meta node_meta @@
