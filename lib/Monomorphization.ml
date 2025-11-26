@@ -769,6 +769,7 @@ let functions files =
                     let ret, args = flatten_arrow t in
                     let _, args = KList.split (List.length (cgs @ cgs')) args in
                     let t = fold_arrow args ret in
+                    let t = MonomorphizationState.resolve_deep t in
                     DExternal (cc, flags @ comment, 0, 0, name, t, pp)
                   in
                   EQualified (Gen.register_def current_file lid (cgs @ cgs') ts name def)
